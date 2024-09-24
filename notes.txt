@@ -1,0 +1,39 @@
+#First authenticate to aws to access the eks
+aws configure
+
+#Update kubeconfig file to access the cluster
+aws eks update-kubeconfig --region us-east-1 --name <Name>
+
+#Now you can check if the kubectl list the nodes
+# Now we can go ahead and create ingress controller. The ingress controller would be aws-alb-loadbalancer.
+#For that we need a service account to create a alb-loadbalancer
+#This one fetches the policy
+curl -O https://raw.githubusercontent.com/kubernetes-sigs/aws-load-balancer-controller/v2.5.4/docs/install/iam_policy.json
+aws iam create-policy --policy-name AWSLoadBalancerControllerIAMPolicy --policy-document file://iam_policy.json
+
+#Based on the iampolicy, We have to create the service account to create the loadbalancer
+eksctl create iamserviceaccount --cluster=<clustername> --namespace=kube-system --name=aws-load-balancer-controller --role-name AmazonEKSLoadBalancerControllerRole --attach-policy-arn=arn:aws:iam::<your_account_id>:policy/AWSLoadBalancerControllerIAMPolicy --approve --region=us-east-1
+
+#We should have enabled oidc to perform these steps. Which had been enable during the terraform cluster creation.
+
+#We create the service account with a certain privillages so that service account can create the alb load balancer in the aws environment. Then we attach that service account to the ingress controller.
+#Once the helm is installed, we should now deploy the aws-load-balancer-controller ingress controller. For that  we #have to enable helm repo
+sudo snap install helm --classic
+helm repo add eks https://aws.github.io/eks-charts
+helm repo update eks
+helm install aws-load-balancer-controller eks/aws-load-balancer-controller -n kube-system --set clusterName=my-cluster --set serviceAccount.create=false --set serviceAccount.name=aws-load-balancer-controller
+
+#Now we can see the ingress controller would have been deploy in the eks cluster as deployment
+
+#Now lets move to argocd part. Where we will create the argocd in the new namespace called argocd so that there won't be any confusion.
+We have ymal manifest file in git we can make use of it...
+
+kubectl create namespace argocd
+kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/v2.4.7/manifests/install.yaml
+
+#Check for running pods 
+#After this we have to access the argocd publicly. 
+
+#There for we will edit argocd-server to load balancer. Now we will see the loadbalancer in the aws console.
+#Actually this loadbalancer has been created by the cloud control manager of the eks cluster, Not by the ingress controller(aws-load-balancer-controller)
+
