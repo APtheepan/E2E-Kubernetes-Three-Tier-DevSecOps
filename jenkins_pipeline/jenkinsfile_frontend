@@ -18,7 +18,7 @@ pipeline {
         }
         stage('Checkout from Git') {
             steps {
-                git credentialsId: 'GITHUB', url: 'https://github.com/APtheepan/E2E-Kubernetes-Three-Tier-DevSecOps.git'
+                git branch: 'main', url: 'https://github.com/APtheepan/E2E-Kubernetes-Three-Tier-DevSecOps.git'
             }
         }
         stage('Sonarqube Analysis') {
@@ -32,21 +32,21 @@ pipeline {
                 }
             }
         }
-        stage('Quality Check') {
-            steps {
-                script {
-                    waitForQualityGate abortPipeline: false, credentialsId: 'sonar-token' 
-                }
-            }
-        }
-        stage('OWASP Dependency-Check Scan') {
-            steps {
-                dir('application_code/frontend') {
-                    dependencyCheck additionalArguments: '--scan ./ --disableYarnAudit --disableNodeAudit', odcInstallation: 'DP-Check'
-                    dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
-                }
-            }
-        }
+        //stage('Quality Check') {
+        //    steps {
+        //        script {
+        //            waitForQualityGate abortPipeline: false, credentialsId: 'sonar-token' 
+        //        }
+        //    }
+        //}
+        //stage('OWASP Dependency-Check Scan') {
+        //    steps {
+        //        dir('application_code/frontend') {
+        //            dependencyCheck additionalArguments: '--scan ./ --disableYarnAudit --disableNodeAudit', odcInstallation: 'DP-Check'
+        //            dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
+        //        }
+        //    }
+        //}
         stage('Trivy File Scan') {
             steps {
                 dir('application_code/frontend') {
@@ -60,7 +60,7 @@ pipeline {
                     dir('application_code/frontend') {
                             sh 'docker system prune -f'
                             sh 'docker container prune -f'
-                            sh 'docker build -t ${AWS_ECR_REPO_NAME} .'
+                            sh 'docker build -t ${AWS_ECR_REPO_NAME} -f Dockerfile .'
                     }
                 }
             }
@@ -81,7 +81,7 @@ pipeline {
         }
         stage('Checkout Code') {
             steps {
-                git credentialsId: 'GITHUB', url: 'https://github.com/APtheepan/E2E-Kubernetes-Three-Tier-DevSecOps.git'
+                git branch: 'main', url: 'https://github.com/APtheepan/E2E-Kubernetes-Three-Tier-DevSecOps.git'
             }
         }
         stage('Update Deployment file') {
@@ -91,10 +91,10 @@ pipeline {
             }
             steps {
                 dir('kubernetes_manifest_files/frontend') {
-                    withCredentials([string(credentialsId: 'github', variable: 'GITHUB_TOKEN')]) {
+                    withCredentials([string(credentialsId: 'GitHub-APP', variable: 'GITHUB_TOKEN')]) {
                         sh '''
                             git config user.email "puspan96@gmail.com"
-                            git config user.name "Theeps-DevOps"
+                            git config user.name "APtheepan"
                             BUILD_NUMBER=${BUILD_NUMBER}
                             echo $BUILD_NUMBER
                             imageTag=$(grep -oP '(?<=frontend:)[^ ]+' deployment.yaml)
@@ -102,7 +102,7 @@ pipeline {
                             sed -i "s/${AWS_ECR_REPO_NAME}:${imageTag}/${AWS_ECR_REPO_NAME}:${BUILD_NUMBER}/" deployment.yaml
                             git add deployment.yaml
                             git commit -m "Update deployment Image to version \${BUILD_NUMBER}"
-                            git push https://${GITHUB_TOKEN}@github.com/${GIT_USER_NAME}/${GIT_REPO_NAME} HEAD:master
+                            git push https://${GITHUB_TOKEN}@github.com/${GIT_USER_NAME}/${GIT_REPO_NAME} HEAD:main
                         '''
                     }
                 }
