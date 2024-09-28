@@ -11,7 +11,7 @@ metadata:
 spec:
   ingressClassName: alb
   rules:
-    - host: teepstech.com
+    - host: teepstech.local
       http:
         paths:
           - path: /api
